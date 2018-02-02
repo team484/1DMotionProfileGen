@@ -90,7 +90,14 @@ public class CalculateProfile {
 		}
 		//Update the location of the paths
 		frontEnd = getLast(forwardPathProgress).pos;
-		tailEnd = getLast(reversePathProgress).pos;
+		
+		//If we're updating the decel path, use the change in pos to update tailEnd
+		if (reversePathProgress.size() > 1 && reversePathProgress == pathProgress) {
+			double preLastPos = reversePathProgress.get(reversePathProgress.size() - 2).pos;
+			double lastPos = reversePathProgress.get(reversePathProgress.size() - 1).pos;
+			double delta = lastPos - preLastPos;
+			tailEnd += delta;
+		}
 		return true;
 	}
 
@@ -184,9 +191,12 @@ public class CalculateProfile {
 		//Add deceleration component to final motion profile path
 		double reversePathStartTime = getLast(reversePathProgress).time;
 		double forwardPathEndTime = getLast(forwardPathProgress).time;
+		double reversePathStartPos = getLast(reversePathProgress).pos;
+		double forwardPathEndPos = getLast(forwardPathProgress).pos;
 		for (int i = reversePathProgress.size() - 1; i >= 0; i--) {
 			State state = reversePathProgress.get(i);
-			state.output += forwardPathEndTime - reversePathStartTime;
+			state.time += forwardPathEndTime - reversePathStartTime;
+			state.pos += forwardPathEndPos - reversePathStartPos;
 			finalPath.add(state);
 		}
 
