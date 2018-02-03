@@ -12,8 +12,8 @@ import java.util.Iterator;
  * a motion profile path. To calculate a path of a given length, run generate
  */
 public class CalculateProfile {
-	ArrayList<State> forwardPath; //the raw robot acceleration data
-	ArrayList<State> reversePath; //the raw robot deceleration data
+	ArrayList<State> forwardPath = new ArrayList<>(); //the raw robot acceleration data
+	ArrayList<State> reversePath = new ArrayList<>(); //the raw robot deceleration data
 
 	/**
 	 * Parses CSV file for robot performance data
@@ -79,9 +79,10 @@ public class CalculateProfile {
 			if (lastState.output > 0) {
 				State nextState = new State(
 						lastState.output, 
-						lastState.pos + lastState.rate,
+						lastState.pos*2 - preLastState.pos,
 						lastState.rate,
 						lastState.time*2 - preLastState.time);
+				pathProgress.add(nextState);
 			} else {
 				return false;
 			}
@@ -171,17 +172,6 @@ public class CalculateProfile {
 			}
 		}
 
-		//If there is overlap in the path components
-		if (frontEnd > tailEnd) {
-			//Removes the overlap of the two paths by deleting the last value of
-			//the slower accelerating path
-			if (forwardPathProgress.size() > reversePathProgress.size()) {
-				forwardPathProgress.remove(forwardPathProgress.size() - 1);
-			} else if (forwardPathProgress.size() < reversePathProgress.size()) {
-				reversePathProgress.remove(reversePathProgress.size() - 1);
-			}
-		}
-
 		finalPath = new ArrayList<State>();
 		//Add acceleration component to final motion profile path
 		for (State state : forwardPathProgress) {
@@ -193,13 +183,29 @@ public class CalculateProfile {
 		double forwardPathEndTime = getLast(forwardPathProgress).time;
 		double reversePathStartPos = getLast(reversePathProgress).pos;
 		double forwardPathEndPos = getLast(forwardPathProgress).pos;
+		//If there is overlap in the path components
+		if (frontEnd > tailEnd) {
+			//Removes the overlap of the two paths by deleting the last value of
+			//the slower accelerating path
+			if (forwardPathProgress.size() > reversePathProgress.size()) {
+				finalPath.remove(finalPath.size() - 1);
+			}
+		}
 		for (int i = reversePathProgress.size() - 1; i >= 0; i--) {
 			State state = reversePathProgress.get(i);
 			state.time += forwardPathEndTime - reversePathStartTime;
 			state.pos += forwardPathEndPos - reversePathStartPos;
 			finalPath.add(state);
 		}
-
+		
+		double offset = getLast(finalPath).pos - distance;
+		
+		for (State state : finalPath) {
+			if (state.output < 0) {
+				state.pos -= offset;
+			}
+		}
+		
 		return finalPath;
 	}
 
